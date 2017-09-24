@@ -53,10 +53,9 @@ class Track(object):
         # probably never happens
         if 'TITLE' in tags:
             self.title = tags['TITLE']
+            self.title = self.title[0]
         else:
             self.title = self.file_name
-        if self.title:
-            self.title = self.title[0]
         if 'ARTIST' in tags:
             self.artist = tags.get('ARTIST')[0]
         self.description = tags.get('COMMENT')
