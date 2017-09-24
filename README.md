@@ -56,3 +56,4 @@ Other Notes
 
 - run `py.test` to run tests
 - didn't use Dropbox API because there's no way to list a shared link folder via the API so had to resolve to scraping
+- You need the Title and Track number set. Use the Mac app "Tagger"

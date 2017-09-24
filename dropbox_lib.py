@@ -24,13 +24,6 @@ class DropboxSharedLinkFetcher(object):
         opener = urllib.FancyURLopener({})
         f = opener.open(url)
         content = f.read()
-
-        # Debugging
-        w = open('/Users/kapil/Repositories/dropcast/last_file.html', 'w')
-        w.write(content)
-        w.flush()
-        w.close()
-
         results = re.findall(REGEX, content)
         results = list(set(results))
         final_results = []
