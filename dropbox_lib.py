@@ -8,7 +8,7 @@ DropboxLink = namedtuple('DropboxLink', ['shmodel_token', 'file_id', 'file_path'
 
 DROPBOX_VIEW_URL = 'https://www.dropbox.com/sh/%s/%s/%s?dl=0'
 DROPBOX_DOWNLOAD_URL = 'https://www.dropbox.com/sh/%s/%s/%s?dl=1'
-DROPBOX_DIRECT_DOWNLOAD_URL = 'https://dl.dropboxusercontent.com/sh/%s/%s/%s?dl=1'
+DROPBOX_DIRECT_DOWNLOAD_URL = 'https://dl.dropboxusercontent.com/sh/%s/%s/%s'
 REGEX = 'https://www.dropbox.com/sh/(?P<shmodel_token>[^/]+)/(?P<file_id>[^/]+)/(?P<file_path>\S+)\?dl=0'
 
 
