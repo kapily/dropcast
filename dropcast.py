@@ -49,9 +49,12 @@ class Track(object):
             self.track_number = int(tags['TRACKNUMBER'][0].split('/')[0])
         else:
             self.track_number = 1  # by default, if only one file, we'll set it to 1. We check for dups later, so it's ok
-        # TODO - probably ok to use file name instead of title if title doesn't exist, but that
+        # Use file name instead of title if title doesn't exist, but that
         # probably never happens
-        self.title = tags['TITLE']
+        if 'TITLE' in tags:
+            self.title = tags['TITLE']
+        else:
+            self.title = self.file_name
         if self.title:
             self.title = self.title[0]
         if 'ARTIST' in tags:
