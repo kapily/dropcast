@@ -30,6 +30,9 @@ gflags.DEFINE_string('dir', None, 'Directory with folders of podcasts')
 SHARED_LINK_FETCHER = None
 
 
+def get_direct_download_url(relative_file_path):
+    return SHARED_LINK_FETCHER.url_for_file(relative_file_path).direct_download_url
+
 def get_download_url(relative_file_path):
     return SHARED_LINK_FETCHER.url_for_file(relative_file_path).download_url
 
@@ -159,8 +162,9 @@ def main(argv):
                 # first run, we won't write the feed.rss file (or any number of runs until the
                 # .rss files are synced)
                 try:
-                    text = 'You can find the feed for your podcast here:\n%s\n' % get_download_url(feed_relative_path)
+                    text = 'You can find the feed for your podcast here:\n\n%s\n' % get_download_url(feed_relative_path)
                     w.write(text)
+                    w.write('\n\nOtherwise, try this link:\n\n%s' % get_direct_download_url(feed_relative_path))
                 except:
                     pass
 

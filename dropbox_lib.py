@@ -39,7 +39,8 @@ class DropboxSharedLinkFetcher(object):
             is_dir = '.' not in original_filpath
             view_url = DROPBOX_VIEW_URL % (shmodel_token, file_id, file_path_url_encoded)
             download_url = DROPBOX_DOWNLOAD_URL % (shmodel_token, file_id, file_path_url_encoded)
-            final_results.append(DropboxLink(shmodel_token, file_id, original_filpath, file_path_url_encoded, is_dir, view_url, download_url))
+            direct_download_url = DROPBOX_DIRECT_DOWNLOAD_URL % (shmodel_token, file_id, file_path_url_encoded)
+            final_results.append(DropboxLink(shmodel_token, file_id, original_filpath, file_path_url_encoded, is_dir, view_url, download_url, direct_download_url))
         return final_results
 
     @staticmethod
