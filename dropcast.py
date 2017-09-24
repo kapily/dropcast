@@ -45,7 +45,10 @@ class Track(object):
         self.full_path = os.path.join(FLAGS.dir, relative_path)
         self.file_name = os.path.basename(relative_path)
         self.relative_path = relative_path
-        self.track_number = int(tags['TRACKNUMBER'][0].split('/')[0])
+        if 'TRACKNUMBER' in tags:
+            self.track_number = int(tags['TRACKNUMBER'][0].split('/')[0])
+        else:
+            self.track_number = 1  # by default, if only one file, we'll set it to 1. We check for dups later, so it's ok
         # TODO - probably ok to use file name instead of title if title doesn't exist, but that
         # probably never happens
         self.title = tags['TITLE']
