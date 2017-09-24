@@ -4,7 +4,7 @@ import os
 import urllib
 from collections import namedtuple
 
-DropboxLink = namedtuple('DropboxLink', ['shmodel_token', 'file_id', 'file_path', 'file_path_url_encoded', 'is_dir', 'view_url', 'download_url'])
+DropboxLink = namedtuple('DropboxLink', ['shmodel_token', 'file_id', 'file_path', 'file_path_url_encoded', 'is_dir', 'view_url', 'download_url', 'direct_download_url'])
 
 DROPBOX_VIEW_URL = 'https://www.dropbox.com/sh/%s/%s/%s?dl=0'
 DROPBOX_DOWNLOAD_URL = 'https://www.dropbox.com/sh/%s/%s/%s?dl=1'
