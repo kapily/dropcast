@@ -51,7 +51,8 @@ class Track(object):
         self.title = tags['TITLE']
         if self.title:
             self.title = self.title[0]
-        self.artist = tags.get('ARTIST')[0]
+        if 'ARTIST' in tags:
+            self.artist = tags.get('ARTIST')[0]
         self.description = tags.get('COMMENT')
         if self.description:
             self.description = self.description[0]
