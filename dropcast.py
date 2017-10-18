@@ -45,13 +45,6 @@ def get_image_download_url(relative_file_path):
     return p
 
 
-"""
-class CutomEpisode(Episode):
-    def rss_entry(self):
-        entry = super(Episode, self).rss_entry()
-        itunes_summary = etree.SubElement(entry, 'itunes:summary')
-"""
-
 class Track(object):
     def __init__(self, relative_path, song, image_url=None):
         # {u'TRACKNUMBER': [u'1/17'], u'COMPILATION': [u'0'], u'TITLE': [u'Introduction'],
