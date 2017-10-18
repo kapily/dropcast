@@ -7,10 +7,13 @@ Flags:
 import gflags
 import json
 import os
+import re
 import sys
 import taglib
 import pytz
 from datetime import datetime, timedelta
+from dateutil import parser
+from lxml import etree
 
 from podgen import Podcast, Episode, Media
 from dropbox_lib import DropboxSharedLinkFetcher
@@ -41,10 +44,19 @@ def get_image_download_url(relative_file_path):
     print "original download url: ", p
     return p
 
+
+"""
+class CutomEpisode(Episode):
+    def rss_entry(self):
+        entry = super(Episode, self).rss_entry()
+        itunes_summary = etree.SubElement(entry, 'itunes:summary')
+"""
+
 class Track(object):
-    def __init__(self, relative_path, tags):
+    def __init__(self, relative_path, song, image_url=None):
         # {u'TRACKNUMBER': [u'1/17'], u'COMPILATION': [u'0'], u'TITLE': [u'Introduction'],
         #  u'ARTIST': [u'Andrew Weil, MD & Rubin Naiman, PhD']}
+        tags = song.tags
         self.full_path = os.path.join(FLAGS.dir, relative_path)
         self.file_name = os.path.basename(relative_path)
         self.relative_path = relative_path
@@ -61,13 +73,33 @@ class Track(object):
             self.title = self.file_name.split('.')[0]
         if 'ARTIST' in tags:
             self.artist = tags.get('ARTIST')[0]
-        self.description = tags.get('COMMENT')
-        if self.description:
-            self.description = self.description[0]
+
+        self.subtitle = tags.get('COMMENT')
+        if self.subtitle:
+            self.subtitle = self.subtitle[0]
+
+        # PODCASTDESC - optional, full description
+        self.summary = self.subtitle
+        if tags.get('PODCASTDESC'):
+            self.summary = tags.get('PODCASTDESC')[0]
+
+        self.image_url = image_url
+
+        # date of the podcast
+        date = None
+        if 'RELEASEDATE' in tags:
+            date = tags.get('RELEASEDATE')[0]
+
+        self.publication_date = None
+        if date:
+            self.publication_date = parser.parse(date)
+
+        self.duration_seconds = song.length
 
     def get_episode(self):
-        media = Media(get_download_url(self.relative_path), os.path.getsize(self.full_path))
-        return Episode(title=self.title, media=media, summary=self.description, explicit=False)
+        media = Media(get_download_url(self.relative_path), os.path.getsize(self.full_path), duration=timedelta(seconds=self.duration_seconds))
+        return Episode(title=self.title, media=media, summary=self.summary, explicit=False,
+                       image=self.image_url, publication_date=self.publication_date, subtitle=self.subtitle)
 
 def main(argv):
     FLAGS(argv)
@@ -93,37 +125,58 @@ def main(argv):
             print "Creating Podcast for path: ", relative_path
 
             # Read params from config file if it exists
+            title = current_folder_name
+            description = None
             config_file_path = os.path.join(dir_, CONFIG_FILE)
-            if os.path.isfile('config_file_path'):
+            if os.path.isfile(config_file_path):
                 config = json.loads(open(config_file_path).read())
-                title = config['title']
-                description = config.get('description')
-            else:
-                title = current_folder_name
-                description = None
+                if 'title' in config:
+                    title = config['title']
+                if 'description' in config:
+                    description = config['description']
 
             if not description:
                 description = 'No description provided.'
 
             # Create a podcast here
-            p = Podcast(name=title, description=description, explicit=False, website='http://google.com', withhold_from_itunes=True)
+            p = Podcast(
+                name=title, description=description, explicit=False, website='http://google.com',
+                withhold_from_itunes=True)
 
             audio_files = []
 
             # Get all files needed for the podcast
             for file_name in file_names:
+                filename_without_extension = os.path.splitext(file_name)[0]
                 relative_file_path = os.path.join(relative_path, file_name)
                 full_path = os.path.join(dir_, file_name)
-                filename, file_extension = os.path.splitext(full_path)
+                full_path_without_extension, file_extension = os.path.splitext(full_path)
                 if file_extension in AUDIO_FILES:
                     print "Adding episode: ", relative_file_path
                     # add it
                     # print mutagen.File(full_path)
-                    audio_files.append(Track(relative_file_path, taglib.File(full_path).tags))
-                elif file_extension in IMAGE_FILES:
-                    # NOTE: this means that if we have more than one image in a directory, we use
-                    # the last one we encounter
-                    print "Adding image: ", relative_file_path
+
+                    # Check to see if there's a corresponding image file
+                    image_url = None
+                    relative_image_path = None
+                    png_file_name = filename_without_extension + '.png'
+                    jpg_file_name = filename_without_extension + '.jpg'
+                    png_path = os.path.join(dir_, png_file_name)
+                    jpg_path = os.path.join(dir_, jpg_file_name)
+                    if os.path.isfile(png_path):
+                        relative_image_path = os.path.join(
+                            relative_path, png_file_name)
+                    if os.path.isfile(jpg_path):
+                        relative_image_path = os.path.join(
+                            relative_path, jpg_file_name)
+                    if relative_image_path:
+                        image_url = get_image_download_url(relative_image_path)
+                    audio_files.append(Track(
+                        relative_file_path, taglib.File(full_path), image_url=image_url))
+                elif file_extension in IMAGE_FILES and filename_without_extension == 'podcast':
+                    # image for the podcast should be named podcast.jpg
+                    # this mean your audio files should not be named "podcast.mp3"
+                    # if you have per-episode images
                     p.image = get_image_download_url(relative_file_path)
 
             # sort the tracks we found by their track number
@@ -138,35 +191,53 @@ def main(argv):
             #    assert audio_files[i].track_number == i + 1, "Error with podcast: " + relative_path
 
             # add episodes
-            current_date_time = datetime(2016, 12, 31, 0, 0, tzinfo=pytz.utc)
+            current_date_time = datetime(2016, 12, 31, 12, 0, tzinfo=pytz.utc)
             position = 1
             for audio_file in audio_files:
                 episode = audio_file.get_episode()
                 episode.position = position
                 position += 1
-                episode.publication_date = current_date_time
+                if episode.publication_date is None:
+                    episode.publication_date = current_date_time
+
                 # We do this so that episodes appear in order
                 current_date_time -= timedelta(days=1)
                 p.episodes.append(episode)
 
+            # We only write the file if there are any changes to not spam the Dropbox recent
+            # files section
 
-            # write the file
-            with open(os.path.join(dir_, 'feed.rss'), 'wb') as w:
-                rss = str(p)
-                w.write(rss)
-
+            # write the file if there are any changes
+            rss_path = os.path.join(dir_, 'feed.rss')
+            old_rss_file_contents_date_removed = None
+            if os.path.exists(rss_path):
+                old_rss_file_contents = open(rss_path, 'r').read()
+                old_rss_file_contents_date_removed = re.sub(r'<lastBuildDate>.*</lastBuildDate>', '', old_rss_file_contents)
+            new_rss_file_contents = unicode(p).encode('utf8')
+            new_rss_file_contents_date_removed = re.sub(r'<lastBuildDate>.*</lastBuildDate>', '', new_rss_file_contents)
+            if old_rss_file_contents_date_removed != new_rss_file_contents_date_removed:
+                with open(rss_path, 'wb') as w:
+                    w.write(new_rss_file_contents)
             feed_relative_path = os.path.join(relative_path, 'feed.rss')
-            with open(os.path.join(dir_, 'README.txt'), 'wb') as w:
-                # We use a try/except here because there's a race condition here the first time you
-                # run this because the .rss file doesn't exist in Dropbox at this point. So on the
-                # first run, we won't write the feed.rss file (or any number of runs until the
-                # .rss files are synced)
-                try:
-                    text = 'You can find the feed for your podcast here:\n\n%s\n' % get_download_url(feed_relative_path)
-                    w.write(text)
-                    w.write('\n\nOtherwise, try this link:\n\n%s' % get_direct_download_url(feed_relative_path))
-                except:
-                    pass
+
+            # Write Readme file if there are any changes
+            readme_path = os.path.join(dir_, 'README.txt')
+            old_readme_file_contents = None
+            if os.path.exists(readme_path):
+                old_readme_file_contents = open(readme_path, 'r').read()
+            new_readme_file_contents = 'You can find the feed for your podcast here:\n\n%s\n' % get_download_url(feed_relative_path)
+            new_readme_file_contents += '\n\nOtherwise, try this link:\n\n%s' % get_direct_download_url(feed_relative_path)
+
+            if old_readme_file_contents != new_readme_file_contents:
+                with open(readme_path, 'wb') as w:
+                    # We use a try/except here because there's a race condition here the first time you
+                    # run this because the .rss file doesn't exist in Dropbox at this point. So on the
+                    # first run, we won't write the feed.rss file (or any number of runs until the
+                    # .rss files are synced)
+                    try:
+                        w.write(new_readme_file_contents)
+                    except:
+                        pass
 
 
 if __name__ == '__main__':
